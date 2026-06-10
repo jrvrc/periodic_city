@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Periodic Table 3D City - Molecular Allotrope Skyline</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #030308;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+      user-select: none;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* Crosshair in the center for Scanning */
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 14px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      border: 2px solid rgba(0, 255, 200, 0.5);
+      border-radius: 50%;
+      z-index: 10;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(0, 255, 200, 0.5);
+    }
+    #crosshair::before {
+      top: 50%;
+      left: -6px;
+      right: -6px;
+      height: 1.5px;
+    }
+    #crosshair::after {
+      left: 50%;
+      top: -6px;
+      bottom: -6px;
+      width: 1.5px;
+    }
+
+    /* Controls Instruction UI */
+    #instructions {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      background: rgba(10, 15, 30, 0.85);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 15px 20px;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      max-width: 320px;
+    }
+    #instructions h1 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+      color: #00ffcc;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+      padding-bottom: 5px;
+    }
+    #instructions ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    #instructions li {
+      margin-bottom: 5px;
+    }
+    #instructions strong {
+      color: #00ffcc;
+    }
+
+    /* Scanner HUD Detail Panel */
+    #hud {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 10;
+      background: rgba(10, 15, 30, 0.85);
+      border: 2px solid #00ffcc;
+      border-radius: 10px;
+      width: 350px;
+      padding: 20px;
+      box-sizing: border-box;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 30px rgba(0, 255, 200, 0.15);
+    }
+    .hud-title {
+      font-size: 0.8rem;
+      letter-spacing: 3px;
+      color: #00ffcc;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .hud-title::after {
+      content: '';
+      flex-grow: 1;
+      height: 1px;
+      background: rgba(0, 255, 200, 0.3);
+      margin-left: 10px;
+    }
+    .placeholder {
+      font-size: 0.9rem;
+      color: #888;
+      text-align: center;
+      padding: 20px 0;
+      font-style: italic;
+    }
+    .element-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .element-symbol {
+      font-size: 2.2rem;
+      font-weight: 900;
+      width: 60px;
+      height: 60px;
+      border: 3px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      margin-right: 15px;
+    }
+    .element-meta {
+      display: flex;
+      flex-direction: column;
+    }
+    .element-name {
+      font-size: 1.4rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .element-number {
+      font-size: 0.85rem;
+      color: #bbb;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+      font-size: 0.85rem;
+      border-top: 1px dashed rgba(255,255,255,0.1);
+      border-bottom: 1px dashed rgba(255,255,255,0.1);
+      padding: 10px 0;
+    }
+    .allotropes-section {
+      margin-top: 10px;
+    }
+    .section-title {
+      font-size: 0.8rem;
+      color: #00ffcc;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .allotropes-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .allotropes-list li {
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      justify-content: space-between;
+    }
+    .allotropes-list li.active-floor {
+      background: rgba(0, 255, 200, 0.15);
+      border-left: 3px solid #00ffcc;
+    }
+    .floor-num {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .scan-status {
+      margin-top: 12px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: bold;
+      animation: blink 1.5s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="canvas-container"></div>
+  <div id="crosshair"></div>
+
+  <div id="instructions">
+    <h1>Periodic City</h1>
+    <ul>
+      <li><strong>Arrow Keys</strong>: Fly/Strafe (relative to camera direction)</li>
+      <li><strong>Look Up/Down</strong>: Adjust flight altitude while moving</li>
+      <li><strong>Mouse Drag / Touch Drag</strong>: Look around city</li>
+      <li><strong>Aim Crosshair</strong> at any molecular shape to scan telemetry</li>
+    </ul>
+  </div>
+
+  <div id="hud">
+    <div class="hud-title">Molecular Allotrope Scanner</div>
+    <div id="hud-content">
+      <div class="placeholder">Point camera crosshair directly at any 3D molecular lattice structure...</div>
+    </div>
+  </div>
+
+  <script>
+    // --- DATABASE: Elements layout + Allotropes mapped on Z-Axis ---
+    const elementsData = [
+      // Period 1
+      { num: 1, symbol: "H", name: "Hydrogen", gp: 1, pd: 1, allotropes: ["Orthohydrogen", "Parahydrogen"] },
+      { num: 2, symbol: "He", name: "Helium", gp: 18, pd: 1, allotropes: ["Helium-I (Liquid)", "Helium-II (Superfluid)"] },
+      // Period 2
+      { num: 3, symbol: "Li", name: "Lithium", gp: 1, pd: 2, allotropes: ["BCC Phase", "FCC Phase"] },
+      { num: 4, symbol: "Be", name: "Beryllium", gp: 2, pd: 2, allotropes: ["Alpha Phase", "Beta Phase"] },
+      { num: 5, symbol: "B", name: "Boron", gp: 13, pd: 2, allotropes: ["Amorphous Boron", "Alpha Rhombohedral", "Beta Rhombohedral", "Beta Tetragonal"] },
+      { num: 6, symbol: "C", name: "Carbon", gp: 14, pd: 2, allotropes: ["Graphite Hexagonal Layer", "Diamond Tetrahedral Network", "Lonsdaleite", "C60 Geodesic Fullerene", "Nanotube Cylindrical Lattice", "Graphene Sheet", "Amorphous Network"] },
+      { num: 7, symbol: "N", name: "Nitrogen", gp: 15, pd: 2, allotropes: ["Alpha-Nitrogen", "Beta-Nitrogen", "Polynitrogen Chain"] },
+      { num: 8, symbol: "O", name: "Oxygen", gp: 16, pd: 2, allotropes: ["Dioxygen (O2)", "Ozone (O3)", "Tetraoxygen (O4)", "Octaoxygen (O8)"] },
+      { num: 9, symbol: "F", name: "Fluorine", gp: 17, pd: 2, allotropes: ["Alpha-Fluorine", "Beta-Fluorine"] },
+      { num: 10, symbol: "Ne", name: "Neon", gp: 18, pd: 2, allotropes: ["Solid Crystalline Neon"] },
+      // Period 3
+      { num: 11, symbol: "Na", name: "Sodium", gp: 1, pd: 3, allotropes: ["BCC Phase", "FCC Phase"] },
+      { num: 12, symbol: "Mg", name: "Magnesium", gp: 2, pd: 3, allotropes: ["HCP Phase"] },
+      { num: 13, symbol: "Al", name: "Aluminum", gp: 13, pd: 3, allotropes: ["FCC Phase"] },
+      { num: 14, symbol: "Si", name: "Silicon", gp: 14, pd: 3, allotropes: ["Amorphous Network", "Crystalline Tetrahedral"] },
+      { num: 15, symbol: "P", name: "Phosphorus", gp: 15, pd: 3, allotropes: ["White (P4 Tetrahedron)", "Red Polymeric Chain", "Violet Monoclinic", "Black Layered", "Scarlet Solid"] },
+      { num: 16, symbol: "S", name: "Sulfur", gp: 16, pd: 3, allotropes: ["Rhombic Crown (S8)", "Monoclinic (S8)", "Amorphous Network", "Plastic Helical Chain"] },
+      { num: 17, symbol: "Cl", name: "Chlorine", gp: 17, pd: 3, allotropes: ["Diatomic Solid"] },
+      { num: 18, symbol: "Ar", name: "Argon", gp: 18, pd: 3, allotropes: ["Solid Crystalline Argon"] },
+      // Period 4
+      { num: 19, symbol: "K", name: "Potassium", gp: 1, pd: 4, allotropes: ["BCC Phase"] },
+      { num: 20, symbol: "Ca", name: "Calcium", gp: 2, pd: 4, allotropes: ["FCC Alpha Phase", "BCC Beta Phase", "Simple Cubic Gamma"] },
+      { num: 21, symbol: "Sc", name: "Scandium", gp: 3, pd: 4, allotropes: ["HCP Alpha Phase", "BCC Beta Phase"] },
+      { num: 22, symbol: "Ti", name: "Titanium", gp: 4, pd: 4, allotropes: ["HCP Alpha Phase", "BCC Beta Phase"] },
+      { num: 23, symbol: "V", name: "Vanadium", gp: 5, pd: 4, allotropes: ["BCC Phase"] },
+      { num: 24, symbol: "Cr", name: "Chromium", gp: 6, pd: 4, allotropes: ["BCC Phase"] },
+      { num: 25, symbol: "Mn", name: "Manganese", gp: 7, pd: 4, allotropes: ["Alpha Phase", "Beta Phase", "Gamma Phase", "Delta Phase"] },
+      { num: 26, symbol: "Fe", name: "Iron", gp: 8, pd: 4, allotropes: ["Ferrite (BCC α-Fe)", "Austenite (FCC γ-Fe)", "Delta-Fe (BCC)", "Hexaferrum (HCP ε-Fe)"] },
+      { num: 27, symbol: "Co", name: "Cobalt", gp: 9, pd: 4, allotropes: ["HCP Alpha Phase", "FCC Beta Phase"] },
+      { num: 28, symbol: "Ni", name: "Nickel", gp: 10, pd: 4, allotropes: ["FCC Phase"] },
+      { num: 29, symbol: "Cu", name: "Copper", gp: 11, pd: 4, allotropes: ["FCC Phase"] },
+      { num: 30, symbol: "Zn", name: "Zinc", gp: 12, pd: 4, allotropes: ["HCP Phase"] },
+      { num: 31, symbol: "Ga", name: "Gallium", gp: 13, pd: 4, allotropes: ["Alpha Orthorhombic", "Beta Monoclinic", "Gamma Phase", "Delta Phase"] },
+      { num: 32, symbol: "Ge", name: "Germanium", gp: 14, pd: 4, allotropes: ["Alpha Diamond Network", "Beta Tetragonal"] },
+      { num: 33, symbol: "As", name: "Arsenic", gp: 15, pd: 4, allotropes: ["Gray Rhomebohedral", "Yellow Tetrahedral", "Black Orthorhombic"] },
+      { num: 34, symbol: "Se", name: "Selenium", gp: 16, pd: 4, allotropes: ["Gray Hexagonal Chain", "Red Monoclinic Ring", "Black Vitreous", "Amorphous"] },
+      { num: 35, symbol: "Br", name: "Bromine", gp: 17, pd: 4, allotropes: ["Diatomic Solid"] },
+      { num: 36, symbol: "Kr", name: "Krypton", gp: 18, pd: 4, allotropes: ["Solid Crystalline Krypton"] },
+      // Period 5
+      { num: 37, symbol: "Rb", name: "Rubidium", gp: 1, pd: 5, allotropes: ["BCC Phase"] },
+      { num: 38, symbol: "Sr", name: "Strontium", gp: 2, pd: 5, allotropes: ["FCC Alpha", "HCP Beta", "BCC Gamma"] },
+      { num: 39, symbol: "Y", name: "Yttrium", gp: 3, pd: 5, allotropes: ["HCP Alpha", "BCC Beta"] },
+      { num: 40, symbol: "Zr", name: "Zirconium", gp: 4, pd: 5, allotropes: ["HCP Alpha", "BCC Beta"] },
+      { num: 41, symbol: "Nb", name: "Niobium", gp: 5, pd: 5, allotropes: ["BCC Phase"] },
+      { num: 42, symbol: "Mo", name: "Molybdenum", gp: 6, pd: 5, allotropes: ["BCC Phase"] },
+      { num: 43, symbol: "Tc", name: "Technetium", gp: 7, pd: 5, allotropes: ["HCP Phase"] },
+      { num: 44, symbol: "Ru", name: "Ruthenium", gp: 8, pd: 5, allotropes: ["HCP Phase"] },
+      { num: 45, symbol: "Rh", name: "Rhodium", gp: 9, pd: 5, allotropes: ["FCC Phase"] },
+      { num: 46, symbol: "Pd", name: "Palladium", gp: 10, pd: 5, allotropes: ["FCC Phase"] },
+      { num: 47, symbol: "Ag", name: "Silver", gp: 11, pd: 5, allotropes: ["FCC Phase"] },
+      { num: 48, symbol: "Cd", name: "Cadmium", gp: 12, pd: 5, allotropes: ["HCP Phase"] },
+      { num: 49, symbol: "In", name: "Indium", gp: 13, pd: 5, allotropes: ["Tetragonal Lattice"] },
+      { num: 50, symbol: "Sn", name: "Tin", gp: 14, pd: 5, allotropes: ["Gray Diamond (α-Sn)", "White Tetragonal (β-Sn)", "Rhombic Tin (γ-Sn)"] },
+      { num: 51, symbol: "Sb", name: "Antimony", gp: 15, pd: 5, allotropes: ["Metallic Alpha", "Yellow Amorphous", "Black Amorphous", "Explosive Phase"] },
+      { num: 52, symbol: "Te", name: "Tellurium", gp: 16, pd: 5, allotropes: ["Crystalline Hexagonal", "Amorphous Network"] },
+      { num: 53, symbol: "I", name: "Iodine", gp: 17, pd: 5, allotropes: ["Diatomic Solid"] },
+      { num: 54, symbol: "Xe", name: "Xenon", gp: 18, pd: 5, allotropes: ["Solid Crystalline Xenon"] },
+      // Period 6
+      { num: 55, symbol: "Cs", name: "Cesium", gp: 1, pd: 6, allotropes: ["BCC Alpha", "BCC Beta", "Double HCP Gamma"] },
+      { num: 56, symbol: "Ba", name: "Barium", gp: 2, pd: 6, allotropes: ["BCC Phase"] },
+      { num: 57, symbol: "La", name: "Lanthanum", gp: 3, pd: 6, allotropes: ["Double HCP Alpha", "FCC Beta", "BCC Gamma"] },
+      { num: 72, symbol: "Hf", name: "Hafnium", gp: 4, pd: 6, allotropes: ["HCP Alpha", "BCC Beta"] },
+      { num: 73, symbol: "Ta", name: "Tantalum", gp: 5, pd: 6, allotropes: ["BCC Alpha", "Tetragonal Beta"] },
+      { num: 74, symbol: "W", name: "Tungsten", gp: 6, pd: 6, allotropes: ["BCC Alpha", "A15 Crystalline Beta"] },
+      { num: 75, symbol: "Re", name: "Rhenium", gp: 7, pd: 6, allotropes: ["HCP Phase"] },
+      { num: 76, symbol: "Os", name: "Osmium", gp: 8, pd: 6, allotropes: ["HCP Phase"] },
+      { num: 77, symbol: "Ir", name: "Iridium", gp: 9, pd: 6, allotropes: ["FCC Phase"] },
+      { num: 78, symbol: "Pt", name: "Platinum", gp: 10, pd: 6, allotropes: ["FCC Phase"] },
+      { num: 79, symbol: "Au", name: "Gold", gp: 11, pd: 6, allotropes: ["FCC Phase"] },
+      { num: 80, symbol: "Hg", name: "Mercury", gp: 12, pd: 6, allotropes: ["Rhombohedral Alpha", "Tetragonal Beta"] },
+      { num: 81, symbol: "Tl", name: "Thallium", gp: 13, pd: 6, allotropes: ["HCP Alpha", "BCC Beta"] },
+      { num: 82, symbol: "Pb", name: "Lead", gp: 14, pd: 6, allotropes: ["FCC Phase"] },
+      { num: 83, symbol: "Bi", name: "Bismuth", gp: 15, pd: 6, allotropes: ["Bismuth-I Rhomebohedral", "Bismuth-II Monoclinic", "Bismuth-III Tetragonal", "Bismuth-V BCC"] },
+      { num: 84, symbol: "Po", name: "Polonium", gp: 16, pd: 6, allotropes: ["Simple Cubic Alpha", "Rhombohedral Beta"] },
+      { num: 85, symbol: "At", name: "Astatine", gp: 17, pd: 6, allotropes: ["Solid Crystalline Phase"] },
+      { num: 86, symbol: "Rn", name: "Radon", gp: 18, pd: 6, allotropes: ["Solid Crystalline Phase"] }
+    ];
+
+    // --- COLOR CLASSIFIER ---
+    function getCategoryColor(el) {
+      const gp = el.gp;
+      const num = el.num;
+      if (num === 1) return 0x4caf50; // Green (Nonmetal)
+      if (gp === 1) return 0xff5722;  // Dark Orange (Alkali Metal)
+      if (gp === 2) return 0xffeb3b;  // Yellow (Alkaline Earth)
+      if (gp >= 3 && gp <= 12) return 0x00bcd4; // Cyan (Transition Metal)
+      if (gp === 18) return 0xe91e63; // Pink (Noble Gas)
+      if (gp === 17) return 0x9c27b0; // Purple (Halogen)
+      
+      const metalloids = [5, 14, 32, 33, 51, 52];
+      if (metalloids.includes(num)) return 0x8bc34a; // Light Green (Metalloid)
+      
+      const postTransition = [13, 31, 49, 50, 81, 82, 83, 84];
+      if (postTransition.includes(num)) return 0x9e9e9e; // Grey (Post-transition)
+      
+      return 0x4caf50; // Green (Reactive Nonmetals: C, N, O, P, S, Se)
+    }
+
+    // --- PROCEDURAL LABEL GENERATOR ---
+    function createLabelTexture(text, colorHexStr) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 128, 64);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+      ctx.fillRect(0, 0, 128, 64);
+      ctx.font = 'bold 38px monospace';
+      ctx.fillStyle = colorHexStr;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 64, 32);
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    }
+
+    // --- SETUP: Three.js ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020206);
+    scene.fog = new THREE.FogExp2(0x020206, 0.012);
+
+    // Set standard UP-vector on Z-axis (Z is Height)
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.up.set(0, 0, 1);
+    camera.position.set(0, -45, 25);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // --- LIGHTS ---
+    const ambientLight = new THREE.AmbientLight(0x22223a, 1.2);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    sunLight.position.set(30, -30, 60);
+    scene.add(sunLight);
+
+    const fillLight = new THREE.DirectionalLight(0x00aaff, 0.5);
+    fillLight.position.set(-30, 30, -20);
+    scene.add(fillLight);
+
+    // --- BACKGROUND DECORATIVE STARS ---
+    const starGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(1200 * 3);
+    for (let i = 0; i < 1200 * 3; i += 3) {
+      const radius = 180 + Math.random() * 80;
+      const u = Math.random();
+      const v = Math.random();
+      const theta = u * 2.0 * Math.PI;
+      const phi = Math.acos(2.0 * v - 1.0);
+      starPositions[i] = radius * Math.sin(phi) * Math.cos(theta);
+      starPositions[i+1] = radius * Math.sin(phi) * Math.sin(theta);
+      starPositions[i+2] = radius * Math.cos(phi);
+    }
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, transparent: true, opacity: 0.7 });
+    const starField = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starField);
+
+    // --- GRID PLATFORM BASE ---
+    const gridHelper = new THREE.GridHelper(180, 36, 0x00ffff, 0x111b2e);
+    gridHelper.rotation.x = Math.PI / 2;
+    scene.add(gridHelper);
+
+    // --- PROCEDURAL 3D SHAPE BUILDERS (Atomic / Lattice Structures) ---
+    function buildAtomMesh(pos, color, scale) {
+      const atomGeom = new THREE.SphereGeometry(0.12 * scale, 12, 12);
+      const atomMat = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.1,
+        metalness: 0.8,
+        emissive: color,
+        emissiveIntensity: 0.2
+      });
+      const mesh = new THREE.Mesh(atomGeom, atomMat);
+      mesh.position.copy(pos);
+      return mesh;
+    }
+
+    function buildBondMesh(p1, p2, color, scale) {
+      const direction = new THREE.Vector3().subVectors(p2, p1);
+      const length = direction.length();
+      const bondGeom = new THREE.CylinderGeometry(0.03 * scale, 0.03 * scale, length, 6);
+      bondGeom.rotateX(Math.PI / 2); // align Y axis height to local Z axis
+      const bondMat = new THREE.MeshStandardMaterial({
+        color: 0x888899,
+        roughness: 0.3,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 0.8
+      });
+      const mesh = new THREE.Mesh(bondGeom, bondMat);
+      mesh.position.copy(p1).add(p2).multiplyScalar(0.5); // Center cylinder at midpoint
+      mesh.lookAt(p2);
+      return mesh;
+    }
+
+    // Direct generators mapped to chemistry definitions
+    function createStructureGroup(allotropeName, colorHex, scale) {
+      const group = new THREE.Group();
+      const name = allotropeName.toLowerCase();
+
+      // Helper function bindings
+      const atom = (pos) => group.add(buildAtomMesh(pos, colorHex, scale));
+      const bond = (p1, p2) => group.add(buildBondMesh(p1, p2, colorHex, scale));
+
+      if (name.includes("diatomic") || name.includes("o2") || name.includes("nitrogen") || name.includes("hydrogen") || name.includes("fluorine") || name.includes("chlorine") || name.includes("bromine")) {
+        // Diatomic molecule (2 atoms, 1 bond)
+        const p1 = new THREE.Vector3(0, 0, -0.35 * scale);
+        const p2 = new THREE.Vector3(0, 0, 0.35 * scale);
+        atom(p1); atom(p2);
+        bond(p1, p2);
+
+      } else if (name.includes("ozone") || name.includes("o3")) {
+        // Bent Ozone structure (3 atoms, 2 bonds)
+        const p1 = new THREE.Vector3(-0.4 * scale, 0, -0.2 * scale);
+        const p2 = new THREE.Vector3(0, 0, 0.3 * scale);
+        const p3 = new THREE.Vector3(0.4 * scale, 0, -0.2 * scale);
+        atom(p1); atom(p2); atom(p3);
+        bond(p1, p2); bond(p2, p3);
+
+      } else if (name.includes("tetrahedron") || name.includes("p4") || name.includes("white")) {
+        // Tetrahedral molecule (4 atoms, 6 bonds)
+        const d = 0.35 * scale;
+        const p = [
+          new THREE.Vector3(d, d, d),
+          new THREE.Vector3(-d, -d, d),
+          new THREE.Vector3(-d, d, -d),
+          new THREE.Vector3(d, -d, -d)
+        ];
+        p.forEach(pt => atom(pt));
+        bond(p[0], p[1]); bond(p[0], p[2]); bond(p[0], p[3]);
+        bond(p[1], p[2]); bond(p[1], p[3]); bond(p[2], p[3]);
+
+      } else if (name.includes("crown") || name.includes("s8") || name.includes("octaoxygen") || name.includes("o8") || name.includes("rhombic") || name.includes("monoclinic")) {
+        // Crown ring structure (8 atoms puckered)
+        const r = 0.55 * scale;
+        const p = [];
+        for (let i = 0; i < 8; i++) {
+          const theta = (i / 8) * Math.PI * 2;
+          const z = (i % 2 === 0) ? 0.2 * scale : -0.2 * scale;
+          p.push(new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), z));
+        }
+        p.forEach(pt => atom(pt));
+        for (let i = 0; i < 8; i++) {
+          bond(p[i], p[(i + 1) % 8]);
+        }
+
+      } else if (name.includes("graphene") || name.includes("graphene sheet") || name.includes("hexagonal layer") || name.includes("graphite")) {
+        // Hexagonal ring flat layout
+        const r = 0.45 * scale;
+        const p = [];
+        for (let i = 0; i < 6; i++) {
+          const theta = (i / 6) * Math.PI * 2;
+          p.push(new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), 0));
+        }
+        p.forEach(pt => atom(pt));
+        for (let i = 0; i < 6; i++) {
+          bond(p[i], p[(i + 1) % 6]);
+        }
+
+      } else if (name.includes("fullerene") || name.includes("c60")) {
+        // Truncated geodesic buckyball network
+        const geom = new THREE.IcosahedronGeometry(0.5 * scale, 1);
+        const posAttr = geom.attributes.position;
+        const pts = [];
+        for (let i = 0; i < posAttr.count; i++) {
+          const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+          if (!pts.some(p => p.distanceTo(v) < 0.05)) pts.push(v);
+        }
+        pts.forEach(p => atom(p));
+        const edges = new THREE.EdgesGeometry(geom);
+        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x888899 }));
+        group.add(lines);
+
+      } else if (name.includes("nanotube")) {
+        // Cylindrical lattice network
+        const cylGeom = new THREE.CylinderGeometry(0.35 * scale, 0.35 * scale, 0.8 * scale, 8, 3, true);
+        const posAttr = cylGeom.attributes.position;
+        const pts = [];
+        for (let i = 0; i < posAttr.count; i++) {
+          const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+          if (!pts.some(p => p.distanceTo(v) < 0.05)) pts.push(v);
+        }
+        pts.forEach(p => atom(p));
+        const edges = new THREE.EdgesGeometry(cylGeom);
+        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x888899 }));
+        group.add(lines);
+
+      } else if (name.includes("tetrahedral") || name.includes("diamond")) {
+        // Tetrahedral molecular center net
+        const center = new THREE.Vector3(0, 0, 0);
+        const armVal = 0.45 * scale;
+        const p = [
+          new THREE.Vector3(armVal, armVal, armVal),
+          new THREE.Vector3(-armVal, -armVal, armVal),
+          new THREE.Vector3(-armVal, armVal, -armVal),
+          new THREE.Vector3(armVal, -armVal, -armVal)
+        ];
+        atom(center);
+        p.forEach(pt => {
+          atom(pt);
+          bond(center, pt);
+        });
+
+      } else if (name.includes("bcc")) {
+        // Body-Centered Cubic lattice model
+        const s = 0.35 * scale;
+        const center = new THREE.Vector3(0, 0, 0);
+        const corners = [];
+        for (let dx of [-s, s]) {
+          for (let dy of [-s, s]) {
+            for (let dz of [-s, s]) {
+              corners.push(new THREE.Vector3(dx, dy, dz));
+            }
+          }
+        }
+        atom(center);
+        corners.forEach(pt => {
+          atom(pt);
+          bond(center, pt);
+        });
+        const cubeGeom = new THREE.BoxGeometry(s*2, s*2, s*2);
+        const edges = new THREE.EdgesGeometry(cubeGeom);
+        const outerBox = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x555566 }));
+        group.add(outerBox);
+
+      } else if (name.includes("fcc")) {
+        // Face-Centered Cubic lattice model
+        const s = 0.35 * scale;
+        const corners = [];
+        for (let dx of [-s, s]) {
+          for (let dy of [-s, s]) {
+            for (let dz of [-s, s]) {
+              corners.push(new THREE.Vector3(dx, dy, dz));
+            }
+          }
+        }
+        const faces = [
+          new THREE.Vector3(s, 0, 0), new THREE.Vector3(-s, 0, 0),
+          new THREE.Vector3(0, s, 0), new THREE.Vector3(0, -s, 0),
+          new THREE.Vector3(0, 0, s), new THREE.Vector3(0, 0, -s)
+        ];
+        corners.forEach(pt => atom(pt));
+        faces.forEach(pt => atom(pt));
+        corners.forEach(c => {
+          faces.forEach(f => {
+            if (c.distanceTo(f) < s * 1.45) bond(c, f);
+          });
+        });
+
+      } else if (name.includes("hcp")) {
+        // Hexagonal Close-Packed lattice model
+        const r = 0.4 * scale;
+        const h = 0.35 * scale;
+        const tops = [], bots = [];
+        for (let i = 0; i < 6; i++) {
+          const theta = (i / 6) * Math.PI * 2;
+          tops.push(new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), h));
+          bots.push(new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), -h));
+        }
+        const mids = [
+          new THREE.Vector3(0.18 * scale, 0, 0),
+          new THREE.Vector3(-0.09 * scale, 0.15 * scale, 0),
+          new THREE.Vector3(-0.09 * scale, -0.15 * scale, 0)
+        ];
+        tops.forEach(pt => atom(pt));
+        bots.forEach(pt => atom(pt));
+        mids.forEach(pt => atom(pt));
+        for (let i = 0; i < 6; i++) {
+          bond(tops[i], tops[(i+1)%6]);
+          bond(bots[i], bots[(i+1)%6]);
+          bond(tops[i], bots[i]);
+        }
+
+      } else {
+        // Default: Dodecahedral crystalline cluster model
+        const geom = new THREE.DodecahedronGeometry(0.45 * scale);
+        const posAttr = geom.attributes.position;
+        const pts = [];
+        for (let i = 0; i < posAttr.count; i++) {
+          const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+          if (!pts.some(p => p.distanceTo(v) < 0.05)) pts.push(v);
+        }
+        pts.forEach(p => atom(p));
+        const edges = new THREE.EdgesGeometry(geom);
+        const lines = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x888899 }));
+        group.add(lines);
+      }
+
+      return group;
+    }
+
+    // --- CITY GENERATION: Building construction ---
+    const buildingsGroup = new THREE.Group();
+    const buildingMeshes = [];
+
+    // Scale mappings
+    const spacingX = 5.2;
+    const spacingY = 5.2;
+    const floorSpacingZ = 2.2; // Generous vertical space for distinct models
+
+    elementsData.forEach(el => {
+      const x = (el.gp - 9.5) * spacingX;
+      const y = (3.5 - el.pd) * spacingY; // Period 1 at the top/back, Period 6 at bottom/front
+
+      const numAllotropes = el.allotropes.length;
+      const baseColorVal = getCategoryColor(el);
+      const colorHexStr = '#' + baseColorVal.toString(16).padStart(6, '0');
+
+      // Build floors
+      for (let i = 0; i < numAllotropes; i++) {
+        // Slight structural pyramid scale decrease as Z goes higher
+        const scaleFactor = Math.pow(0.88, i);
+
+        const allotropeGroup = new THREE.Group();
+        const zPos = i * floorSpacingZ + 1.0;
+        allotropeGroup.position.set(x, y, zPos);
+
+        // 1. Hover Platform Pedestal
+        const diskGeom = new THREE.CylinderGeometry(1.4 * scaleFactor, 1.4 * scaleFactor, 0.05, 16);
+        diskGeom.rotateX(Math.PI / 2); // Rotate to horizontal layout
+        const diskMat = new THREE.MeshStandardMaterial({
+          color: baseColorVal,
+          roughness: 0.1,
+          metalness: 0.9,
+          transparent: true,
+          opacity: 0.25,
+          emissive: baseColorVal,
+          emissiveIntensity: 0.15
+        });
+        const disk = new THREE.Mesh(diskGeom, diskMat);
+        disk.position.set(0, 0, -0.7); // Anchor disk below the 3D model
+        allotropeGroup.add(disk);
+
+        // Pedestal Outline
+        const diskEdges = new THREE.EdgesGeometry(diskGeom);
+        const diskOutline = new THREE.LineSegments(diskEdges, new THREE.LineBasicMaterial({ color: baseColorVal, transparent: true, opacity: 0.5 }));
+        diskOutline.position.set(0, 0, -0.7);
+        allotropeGroup.add(diskOutline);
+
+        // 2. 3D Model Shape
+        const structuralShape = createStructureGroup(el.allotropes[i], baseColorVal, scaleFactor);
+        allotropeGroup.add(structuralShape);
+
+        // Metadata assignment (essential for Raycast identification)
+        allotropeGroup.userData = {
+          element: el,
+          allotropeName: el.allotropes[i],
+          floorIndex: i,
+          baseColor: baseColorVal,
+          platform: disk
+        };
+
+        buildingsGroup.add(allotropeGroup);
+        // Save the direct children to reference for Raycaster collision checks
+        buildingMeshes.push(allotropeGroup);
+      }
+
+      // Add a floating symbol labels above building towers
+      const totalHeight = numAllotropes * floorSpacingZ;
+      const labelMat = new THREE.SpriteMaterial({
+        map: createLabelTexture(el.symbol, colorHexStr),
+        transparent: true
+      });
+      const sprite = new THREE.Sprite(labelMat);
+      sprite.position.set(x, y, totalHeight + 0.8);
+      sprite.scale.set(2.8, 1.4, 1);
+      scene.add(sprite);
+    });
+
+    scene.add(buildingsGroup);
+
+    // --- INTERACTIVE SYSTEM CONTROLS ---
+    const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+
+    window.addEventListener('keydown', e => {
+      if (e.key in keys) keys[e.key] = true;
+    });
+
+    window.addEventListener('keyup', e => {
+      if (e.key in keys) keys[e.key] = false;
+    });
+
+    // Inertial camera control parameters
+    let yaw = 0;
+    let pitch = -0.4;
+    let isMouseDown = false;
+    let previousMousePosition = { x: 0, y: 0 };
+
+    function handleLookStart(x, y) {
+      isMouseDown = true;
+      previousMousePosition = { x, y };
+    }
+
+    function handleLookMove(x, y) {
+      if (!isMouseDown) return;
+      const deltaX = x - previousMousePosition.x;
+      const deltaY = y - previousMousePosition.y;
+
+      yaw -= deltaX * 0.0035;
+      pitch -= deltaY * 0.0035;
+
+      // Restrict camera flipping over poles
+      pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+      previousMousePosition = { x, y };
+    }
+
+    window.addEventListener('mousedown', e => handleLookStart(e.clientX, e.clientY));
+    window.addEventListener('mousemove', e => handleLookMove(e.clientX, e.clientY));
+    window.addEventListener('mouseup', () => isMouseDown = false);
+
+    window.addEventListener('touchstart', e => {
+      if (e.touches.length > 0) handleLookStart(e.touches[0].clientX, e.touches[0].clientY);
+    });
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) handleLookMove(e.touches[0].clientX, e.touches[0].clientY);
+    });
+    window.addEventListener('touchend', () => isMouseDown = false);
+
+    // --- COLLISION SCANNER (RAYCAST) ---
+    const raycaster = new THREE.Raycaster();
+    const screenCenter = new THREE.Vector2(0, 0); // Always evaluate screen center
+    let hoveredGroup = null;
+    let originalEmissives = [];
+
+    function setStructureGlow(group, intensity) {
+      group.traverse(child => {
+        if (child.material && child.material.emissive) {
+          child.material.emissiveIntensity = intensity;
+        }
+      });
+    }
+
+    function runStructureScanner() {
+      raycaster.setFromCamera(screenCenter, camera);
+      // Run deep recursive intersection analysis against procedural building groups
+      const intersects = raycaster.intersectObjects(buildingMeshes, true);
+
+      if (intersects.length > 0) {
+        // Trace up the parent hierarchy to locate the root allotrope group object
+        let hitObj = intersects[0].object;
+        while (hitObj && !hitObj.userData.element) {
+          hitObj = hitObj.parent;
+        }
+
+        if (hitObj && hoveredGroup !== hitObj) {
+          // Reset previous target glow intensity
+          if (hoveredGroup) {
+            setStructureGlow(hoveredGroup, 0.2);
+            if (hoveredGroup.userData.platform) {
+              hoveredGroup.userData.platform.material.opacity = 0.25;
+              hoveredGroup.userData.platform.material.emissiveIntensity = 0.15;
+            }
+          }
+
+          hoveredGroup = hitObj;
+
+          // Highly illuminate newly targeted structure layers and platform
+          setStructureGlow(hoveredGroup, 1.2);
+          if (hoveredGroup.userData.platform) {
+            hoveredGroup.userData.platform.material.opacity = 0.65;
+            hoveredGroup.userData.platform.material.emissiveIntensity = 0.9;
+          }
+
+          const el = hoveredGroup.userData.element;
+          const name = hoveredGroup.userData.allotropeName;
+          const idx = hoveredGroup.userData.floorIndex;
+          updateScannerHUD(el, name, idx);
+        }
+      } else {
+        if (hoveredGroup) {
+          setStructureGlow(hoveredGroup, 0.2);
+          if (hoveredGroup.userData.platform) {
+            hoveredGroup.userData.platform.material.opacity = 0.25;
+            hoveredGroup.userData.platform.material.emissiveIntensity = 0.15;
+          }
+          hoveredGroup = null;
+          clearScannerHUD();
+        }
+      }
+    }
+
+    function updateScannerHUD(el, activeAllotropeName, activeIdx) {
+      const colorHex = '#' + getCategoryColor(el).toString(16).padStart(6, '0');
+      
+      const allotropeListHTML = el.allotropes.map((alt, idx) => {
+        const isCurrent = idx === activeIdx;
+        return `
+          <li class="${isCurrent ? 'active-floor' : ''}" style="${isCurrent ? 'color: #00ffcc; font-weight: bold; text-shadow: 0 0 5px rgba(0,255,200,0.5);' : ''}">
+            <span class="floor-num">Lvl ${idx + 1}</span>
+            <span>${alt} ${isCurrent ? '◀' : ''}</span>
+          </li>
+        `;
+      }).join('');
+
+      document.getElementById('hud-content').innerHTML = `
+        <div class="element-header">
+          <div class="element-symbol" style="border-color: ${colorHex}; color: ${colorHex}; box-shadow: 0 0 10px ${colorHex}55;">${el.symbol}</div>
+          <div class="element-meta">
+            <div class="element-name">${el.name}</div>
+            <div class="element-number">Atomic Number: ${el.num}</div>
+          </div>
+        </div>
+        <div class="info-grid">
+          <div><strong>Periodic Column:</strong> Group ${el.gp}</div>
+          <div><strong>Periodic Row:</strong> Period ${el.pd}</div>
+        </div>
+        <div class="allotropes-section">
+          <div class="section-title">ALLOTROPES ON THE Z-AXIS</div>
+          <ul class="allotropes-list">
+            ${allotropeListHTML}
+          </ul>
+        </div>
+        <div class="scan-status" style="color: ${colorHex};">
+          SYSTEM SCANNING LEVEL ${activeIdx + 1}: ${activeAllotropeName.toUpperCase()}
+        </div>
+      `;
+    }
+
+    function clearScannerHUD() {
+      document.getElementById('hud-content').innerHTML = `
+        <div class="placeholder">Point camera crosshair directly at any 3D molecular lattice structure...</div>
+      `;
+    }
+
+    // --- GAME ENGINE LOOP ---
+    const velocity = new THREE.Vector3();
+    const friction = 0.86; // Air drag coefficient
+    const accelRate = 0.08;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Camera Heading Vectors
+      const cosP = Math.cos(pitch);
+      const sinP = Math.sin(pitch);
+      const cosY = Math.cos(yaw);
+      const sinY = Math.sin(yaw);
+
+      // Forward vector contains vertical components (pitch) to dynamically guide altitude
+      const forward = new THREE.Vector3(cosP * sinY, cosP * cosY, sinP).normalize();
+      const right = new THREE.Vector3(cosY, -sinY, 0).normalize();
+
+      const accel = new THREE.Vector3();
+
+      if (keys.ArrowUp) accel.addScaledVector(forward, accelRate);
+      if (keys.ArrowDown) accel.addScaledVector(forward, -accelRate);
+      if (keys.ArrowLeft) accel.addScaledVector(right, -accelRate);
+      if (keys.ArrowRight) accel.addScaledVector(right, accelRate);
+
+      velocity.add(accel);
+      velocity.multiplyScalar(friction);
+      camera.position.add(velocity);
+
+      // Boundaries keeping the player confined in the city center limits
+      camera.position.x = Math.max(-65, Math.min(65, camera.position.x));
+      camera.position.y = Math.max(-65, Math.min(65, camera.position.y));
+      camera.position.z = Math.max(0.6, Math.min(50, camera.position.z));
+
+      // Update looking targets
+      const target = new THREE.Vector3().copy(camera.position).add(forward);
+      camera.lookAt(target);
+
+      // Run real-time structure scanner
+      runStructureScanner();
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Initiate visualization
+    animate();
+  </script>
+</body>
+</html>
