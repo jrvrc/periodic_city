@@ -23,7 +23,7 @@
       z-index: 1;
     }
 
-    /* Crosshair in the center for Scanning */
+    /* Crosshair follows the mouse/touch cursor */
     #crosshair {
       position: absolute;
       top: 50%;
@@ -32,14 +32,15 @@
       height: 14px;
       transform: translate(-50%, -50%);
       pointer-events: none;
-      border: 2px solid rgba(0, 255, 200, 0.5);
+      border: 2px solid rgba(0, 255, 200, 0.7);
       border-radius: 50%;
       z-index: 10;
+      transition: border-color 0.2s ease;
     }
     #crosshair::before, #crosshair::after {
       content: '';
       position: absolute;
-      background: rgba(0, 255, 200, 0.5);
+      background: rgba(0, 255, 200, 0.7);
     }
     #crosshair::before {
       top: 50%;
@@ -105,6 +106,7 @@
       box-sizing: border-box;
       backdrop-filter: blur(8px);
       box-shadow: 0 4px 30px rgba(0, 255, 200, 0.15);
+      transition: border-color 0.3s ease;
     }
     .hud-title {
       font-size: 0.8rem;
@@ -179,30 +181,8 @@
       color: #00ffcc;
       margin-bottom: 8px;
       font-weight: bold;
-    }
-    .allotropes-list {
-      list-style-type: none;
-      padding: 0;
-      margin: 0;
-      max-height: 150px;
-      overflow-y: auto;
-    }
-    .allotropes-list li {
-      font-size: 0.85rem;
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-bottom: 4px;
-      background: rgba(255, 255, 255, 0.03);
-      display: flex;
-      justify-content: space-between;
-    }
-    .allotropes-list li.active-floor {
-      background: rgba(0, 255, 200, 0.15);
-      border-left: 3px solid #00ffcc;
-    }
-    .floor-num {
-      font-size: 0.75rem;
-      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     .scan-status {
       margin-top: 12px;
@@ -230,7 +210,7 @@
       <li><strong>Arrow Keys</strong>: Fly/Strafe (relative to camera direction)</li>
       <li><strong>Look Up/Down</strong>: Adjust flight altitude while moving</li>
       <li><strong>Mouse Drag / Touch Drag</strong>: Look around city</li>
-      <li><strong>Aim Crosshair</strong> at any molecular shape to scan telemetry</li>
+      <li><strong>Hover Crosshair</strong> over any molecular shape to scan telemetry</li>
     </ul>
   </div>
 
@@ -323,6 +303,66 @@
       { num: 85, symbol: "At", name: "Astatine", gp: 17, pd: 6, allotropes: ["Solid Crystalline Phase"] },
       { num: 86, symbol: "Rn", name: "Radon", gp: 18, pd: 6, allotropes: ["Solid Crystalline Phase"] }
     ];
+
+    // --- DETAILED ALLOTROPE INFORMATION BASE ---
+    function getAllotropeDescription(el, allotropeName, activeIdx) {
+      const name = allotropeName.toLowerCase();
+      
+      // Curated descriptions for prominent structures
+      if (name.includes("diamond")) {
+        return "Diamond is a metastable form of Carbon where atoms are structured in a robust tetrahedral network. This tightly bound geometry makes it exceptionally hard, highly thermally conductive, and optically brilliant.";
+      }
+      if (name.includes("graphite")) {
+        return "Graphite consists of parallel sheets of hexagonal graphene layers bound together by weak Van der Waals forces. This layout allows the layers to slide easily, making it an excellent dry lubricant and electrical conductor.";
+      }
+      if (name.includes("graphene")) {
+        return "Graphene is a single, flat layer of Carbon arranged in a 2D honeycomb crystal lattice. It possesses extreme tensile strength, high flexibility, and superb electrical conductivity, acting as a foundational nanomaterial.";
+      }
+      if (name.includes("fullerene") || name.includes("c60")) {
+        return "Buckminsterfullerene (C60) is a hollow geodesic sphere comprising sixty carbon atoms structured in interlocking pentagons and hexagons. Its unique symmetry is highly stable and has practical applications in drug delivery and nanotechnology.";
+      }
+      if (name.includes("nanotube")) {
+        return "Carbon Nanotubes are seamless cylindrical tubes made of rolled graphene sheets. They feature extraordinary strength-to-weight ratios and highly versatile electronic behaviors that are valuable in material sciences.";
+      }
+      if (name.includes("dioxygen") || name.includes("o2")) {
+        return "Dioxygen (O2) is the standard diatomic form of Oxygen, composing roughly 21% of Earth's atmosphere. It is highly reactive, essential for respiration in aerobic organisms, and vital for organic combustion.";
+      }
+      if (name.includes("ozone") || name.includes("o3")) {
+        return "Ozone (O3) is a bent, highly reactive triatomic gas molecule. In the stratosphere, it forms a protective layer that filters out harmful solar UV radiation, though it behaves as a respiratory pollutant at ground level.";
+      }
+      if (name.includes("white")) {
+        return "White Phosphorus contains isolated tetrahedral P4 molecules. It is highly toxic, soft, and so chemically reactive that it spontaneously ignites when exposed to atmospheric oxygen, emitting a pale green glow.";
+      }
+      if (name.includes("red")) {
+        return "Red Phosphorus is an amorphous, polymeric network formed by linking broken P4 tetrahedra. It is significantly more stable, safer to handle, and less toxic than white phosphorus, making it ideal for safety match striker surfaces.";
+      }
+      if (name.includes("black")) {
+        return "Black Phosphorus is the most thermodynamically stable allotrope of phosphorus, arranged in puckered, layered sheets. It behaves as a semiconductor with a tunable bandgap, making it highly valuable for modern electronic components.";
+      }
+      if (name.includes("s8") || name.includes("rhombic") || name.includes("monoclinic")) {
+        return `${allotropeName} is a crystalline arrangement of octasulfur rings. It is characterized by its bright yellow appearance, brittle nature, and a crown-shaped crown geometry held together by intermolecular forces.`;
+      }
+      if (name.includes("helium-ii")) {
+        return "Helium-II is a cryogenic liquid state of Helium-4 that exhibits zero viscosity. Known as a superfluid, it can flow up and over the walls of containers and conduct heat with absolute efficiency.";
+      }
+
+      // Procedural fallbacks based on crystal geometries
+      let text = `${allotropeName} is a distinct structural form of ${el.name}. `;
+      if (name.includes("bcc")) {
+        text += "It forms a Body-Centered Cubic (BCC) crystal lattice, with one atom in the center of the unit cell and eight at the corners. This structure typically provides metals with high strength and moderate ductility.";
+      } else if (name.includes("fcc")) {
+        text += "It crystallizes in a Face-Centered Cubic (FCC) close-packed configuration. This layout optimizes space efficiently and is characteristic of highly ductile, electrically conductive metals like gold and copper.";
+      } else if (name.includes("hcp")) {
+        text += "It adopts a Hexagonal Close-Packed (HCP) structural phase. This dense arrangement limits the number of slip systems, giving the material distinct directional strength and hardness traits.";
+      } else if (name.includes("diatomic")) {
+        text += "It is a diatomic molecule bound together by strong covalent forces. It represents the elemental state in gaseous or low-temperature molecular solid forms.";
+      } else if (name.includes("amorphous")) {
+        text += "It has an amorphous structure lacking long-range atomic order. Its randomized glassy network results in isotopic physical properties.";
+      } else {
+        text += `In this simulation, its molecular geometry represents the Level ${activeIdx + 1} phase of the element's atomic tower.`;
+      }
+      return text;
+    }
 
     // --- COLOR CLASSIFIER ---
     function getCategoryColor(el) {
@@ -709,7 +749,7 @@
         buildingMeshes.push(allotropeGroup);
       }
 
-      // Add a floating symbol labels above building towers
+      // Add floating symbol labels above building towers
       const totalHeight = numAllotropes * floorSpacingZ;
       const labelMat = new THREE.SpriteMaterial({
         map: createLabelTexture(el.symbol, colorHexStr),
@@ -770,11 +810,33 @@
     });
     window.addEventListener('touchend', () => isMouseDown = false);
 
+    // --- MOUSE TRACKING & DYNAMIC CROSSHAIR ---
+    const mouse = new THREE.Vector2(0, 0); // Normalized device coordinates [-1, 1]
+
+    function updateCrosshairAndMouse(clientX, clientY) {
+      // Calculate normalized coordinates for Three.js raycasting
+      mouse.x = (clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+      // Move visual crosshair element to matching screen pixels
+      const crosshair = document.getElementById('crosshair');
+      crosshair.style.left = clientX + 'px';
+      crosshair.style.top = clientY + 'px';
+    }
+
+    window.addEventListener('mousemove', e => {
+      updateCrosshairAndMouse(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length > 0) {
+        updateCrosshairAndMouse(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    });
+
     // --- COLLISION SCANNER (RAYCAST) ---
     const raycaster = new THREE.Raycaster();
-    const screenCenter = new THREE.Vector2(0, 0); // Always evaluate screen center
     let hoveredGroup = null;
-    let originalEmissives = [];
 
     function setStructureGlow(group, intensity) {
       group.traverse(child => {
@@ -785,19 +847,17 @@
     }
 
     function runStructureScanner() {
-      raycaster.setFromCamera(screenCenter, camera);
-      // Run deep recursive intersection analysis against procedural building groups
+      // Raycast relative to our active mouse coordinates instead of screenCenter
+      raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(buildingMeshes, true);
 
       if (intersects.length > 0) {
-        // Trace up the parent hierarchy to locate the root allotrope group object
         let hitObj = intersects[0].object;
         while (hitObj && !hitObj.userData.element) {
           hitObj = hitObj.parent;
         }
 
         if (hitObj && hoveredGroup !== hitObj) {
-          // Reset previous target glow intensity
           if (hoveredGroup) {
             setStructureGlow(hoveredGroup, 0.2);
             if (hoveredGroup.userData.platform) {
@@ -808,7 +868,6 @@
 
           hoveredGroup = hitObj;
 
-          // Highly illuminate newly targeted structure layers and platform
           setStructureGlow(hoveredGroup, 1.2);
           if (hoveredGroup.userData.platform) {
             hoveredGroup.userData.platform.material.opacity = 0.65;
@@ -819,6 +878,11 @@
           const name = hoveredGroup.userData.allotropeName;
           const idx = hoveredGroup.userData.floorIndex;
           updateScannerHUD(el, name, idx);
+
+          // Change crosshair color on focus
+          const colorHex = '#' + getCategoryColor(el).toString(16).padStart(6, '0');
+          document.getElementById('crosshair').style.borderColor = colorHex;
+          document.getElementById('hud').style.borderColor = colorHex;
         }
       } else {
         if (hoveredGroup) {
@@ -829,22 +893,17 @@
           }
           hoveredGroup = null;
           clearScannerHUD();
+
+          // Reset border styles
+          document.getElementById('crosshair').style.borderColor = 'rgba(0, 255, 200, 0.7)';
+          document.getElementById('hud').style.borderColor = '#00ffcc';
         }
       }
     }
 
     function updateScannerHUD(el, activeAllotropeName, activeIdx) {
       const colorHex = '#' + getCategoryColor(el).toString(16).padStart(6, '0');
-      
-      const allotropeListHTML = el.allotropes.map((alt, idx) => {
-        const isCurrent = idx === activeIdx;
-        return `
-          <li class="${isCurrent ? 'active-floor' : ''}" style="${isCurrent ? 'color: #00ffcc; font-weight: bold; text-shadow: 0 0 5px rgba(0,255,200,0.5);' : ''}">
-            <span class="floor-num">Lvl ${idx + 1}</span>
-            <span>${alt} ${isCurrent ? '◀' : ''}</span>
-          </li>
-        `;
-      }).join('');
+      const desc = getAllotropeDescription(el, activeAllotropeName, activeIdx);
 
       document.getElementById('hud-content').innerHTML = `
         <div class="element-header">
@@ -855,17 +914,18 @@
           </div>
         </div>
         <div class="info-grid">
-          <div><strong>Periodic Column:</strong> Group ${el.gp}</div>
-          <div><strong>Periodic Row:</strong> Period ${el.pd}</div>
+          <div><strong>Group:</strong> ${el.gp}</div>
+          <div><strong>Period:</strong> ${el.pd}</div>
         </div>
         <div class="allotropes-section">
-          <div class="section-title">ALLOTROPES ON THE Z-AXIS</div>
-          <ul class="allotropes-list">
-            ${allotropeListHTML}
-          </ul>
+          <div class="section-title" style="color: ${colorHex};">Target Locked (Level ${activeIdx + 1})</div>
+          <div style="font-size: 1.15rem; font-weight: bold; margin-bottom: 8px;">${activeAllotropeName}</div>
+          <p style="font-size: 0.88rem; line-height: 1.45; color: #ddd; margin: 0 0 10px 0;">
+            ${desc}
+          </p>
         </div>
         <div class="scan-status" style="color: ${colorHex};">
-          SYSTEM SCANNING LEVEL ${activeIdx + 1}: ${activeAllotropeName.toUpperCase()}
+          Telemetry Active
         </div>
       `;
     }
